@@ -1,13 +1,264 @@
 {
-  "generated_at": "2026-11-23T20:46:43+00:00",
+  "generated_at": "2026-11-24T13:57:23+00:00",
   "counts": {
     "liquor": 1489,
-    "beer": 6743,
-    "cannabis": 418,
-    "tobacco": 3565,
-    "total": 12215
+    "beer": 6735,
+    "cannabis": 415,
+    "cannabis_open": 311,
+    "tobacco": 3797,
+    "total": 12436
   },
-  "mapped_features": 12208,
+  "mapped_features": 12399,
+  "geocoding": {
+    "needed": 460,
+    "placed": 420,
+    "stacked": 304,
+    "replaced": 254
+  },
+  "unmapped": [
+    {
+      "category": "liquor",
+      "name": "Raj Wine Llc",
+      "address": "PENN STATION, NEW YORK, NY, 10001"
+    },
+    {
+      "category": "beer",
+      "name": "V D 33 Inc",
+      "address": "PATH 33RD ST STATION, NEW YORK, NY, 10001"
+    },
+    {
+      "category": "beer",
+      "name": "Junction Grocery & Vapes Inc",
+      "address": "9501 57TH AVE, ELMHURST, NY, 11373"
+    },
+    {
+      "category": "beer",
+      "name": "Troncoso Brothers Corp",
+      "address": "16 86 GEORGE ST, RIDGEWOOD, NY, 11385"
+    },
+    {
+      "category": "beer",
+      "name": "Bogopa Inc",
+      "address": "1759 RIDGEWOOD PLACE, BROOKLYN, NY, 11237"
+    },
+    {
+      "category": "beer",
+      "name": "Ssp America Kcgi Jfk T7 Llc",
+      "address": "JFK INT'L AIRPORT TERMINAL 7, JAMAICA, NY, 11430"
+    },
+    {
+      "category": "beer",
+      "name": "The Stop & Shop Supermarket Company LLC",
+      "address": "213-215 26TH AVE, BAYSIDE, NY, 11360"
+    },
+    {
+      "category": "beer",
+      "name": "H & S Convenience Corp",
+      "address": "288 Clay Ave, Bronx, NY, 10457"
+    },
+    {
+      "category": "beer",
+      "name": "JP & M Deli Grocery NY Corp",
+      "address": "104-01 Glenwood Rd, Brooklyn, NY, 11236"
+    },
+    {
+      "category": "beer",
+      "name": "Hillside Mini Mart 1 Corp",
+      "address": "87-87 Hillside Ave, QUEENS VILLAGE, NY, 11427"
+    },
+    {
+      "category": "cannabis",
+      "name": "Celestial Herbs",
+      "address": "3430 Boston rd, Bronx, NY, 10467"
+    },
+    {
+      "category": "cannabis",
+      "name": "Queens Delight LLC",
+      "address": "233-20 Northern Blvd, Little Neck, NY, 11362"
+    },
+    {
+      "category": "cannabis",
+      "name": "GREEN FLOWER WELLNESS",
+      "address": "214 24 73rd Ave, OAKLAND GARDEN, NY, 11364"
+    },
+    {
+      "category": "cannabis",
+      "name": "MZDZ Corp",
+      "address": "875 Neptune Ave, Brooklyn, NY, 11224"
+    },
+    {
+      "category": "cannabis",
+      "name": "Wee4justice 3",
+      "address": "48 35 41 street, sunnyside, NY, 11104"
+    },
+    {
+      "category": "cannabis",
+      "name": "GREEN FLOWER WELLNESS 5 LLC",
+      "address": "270-01 HILLSIDE AVE, GLEN OAKS, NY, 11004"
+    },
+    {
+      "category": "cannabis",
+      "name": "GSS Consulting LLC",
+      "address": "29-27 41st Avenue, Glen Oaks, NY, 11004"
+    },
+    {
+      "category": "tobacco",
+      "name": "Christopher Connolly",
+      "address": "ROCKAWAY POINT, NY, 11697"
+    },
+    {
+      "category": "tobacco",
+      "name": "METRO NEWS & CAFE INC.",
+      "address": "199 VESEY ST, New York, NY, 10282"
+    },
+    {
+      "category": "tobacco",
+      "name": "AKTER, JASMIN",
+      "address": "N/W/C 6 AVENUE, NEW YORK, NY, 10001"
+    },
+    {
+      "category": "tobacco",
+      "name": "Aamir Abdul Sattar Patel",
+      "address": "NEC WEST 57 STREET, New York, NY, 10019"
+    },
+    {
+      "category": "tobacco",
+      "name": "ZAVERI, JITENDRA",
+      "address": "WATER STREET, NEW YORK, NY, 10005"
+    },
+    {
+      "category": "tobacco",
+      "name": "ALKA NEWSSTAND",
+      "address": "N/W/C GREENWICH ST, NEW YORK, NY, 10007"
+    },
+    {
+      "category": "tobacco",
+      "name": "ALKA NEWSTAND",
+      "address": "GREENWICH ST, NEW YORK, NY, 10007"
+    },
+    {
+      "category": "tobacco",
+      "name": "Mohammed Shah Moazzem",
+      "address": "EAST 14 STREET, NEW YORK, NY, 10003"
+    },
+    {
+      "category": "tobacco",
+      "name": "HG JFK T6 Retail, JV",
+      "address": "JFK INTERNATIONAL AIRPORT, JAMAICA, NY, 11430"
+    },
+    {
+      "category": "tobacco",
+      "name": "SHAH, JYOTI Y",
+      "address": "61 STREET, WOODSIDE, NY, 11373"
+    },
+    {
+      "category": "tobacco",
+      "name": "NYC AGLOW BY HUDSON",
+      "address": "1 MAIN TERMINAL  AKA: BUILDING 37, FLUSHING, NY, 11371"
+    },
+    {
+      "category": "tobacco",
+      "name": "MOHAMMED NEWSSTAND",
+      "address": "RIVER AVENUE &, BRONX, NY, 10451"
+    },
+    {
+      "category": "tobacco",
+      "name": "DOLIN, ROBERT B",
+      "address": "WALL STREET & BROAD STREET, NY, NY, 10005"
+    },
+    {
+      "category": "tobacco",
+      "name": "Derek News LLC",
+      "address": "NEC VARICK STREET, NEW YORK, NY, 10013"
+    },
+    {
+      "category": "tobacco",
+      "name": "7 ELEVEN STORE #39793B",
+      "address": "1 MAIN TERMINAL  AKA: BUILDING 37, FLUSHING, NY, 11371"
+    },
+    {
+      "category": "tobacco",
+      "name": "Derek News LLC",
+      "address": "NEC VARICK STREET, NEW YORK, NY, 10013"
+    },
+    {
+      "category": "tobacco",
+      "name": "7 ELEVEN STORE #39681A",
+      "address": "JFK BUILDING 125, JAMAICA, NY, 11430"
+    },
+    {
+      "category": "tobacco",
+      "name": "BALVANT PATEL NEWSSTAND",
+      "address": "SEC WHITEHALL STREET, NEW YORK, NY, 10004"
+    },
+    {
+      "category": "tobacco",
+      "name": "UNIVERISTY PLACE NEWSSTAND",
+      "address": "SEC UNIVERSITY PLACE, NEW YORK, NY, 10003"
+    },
+    {
+      "category": "tobacco",
+      "name": "JBN FOOD CORP",
+      "address": "5725 SHORE FRONT PKWY, ARVERNE, NY, 11692"
+    }
+  ],
+  "excluded_outside_city": [
+    {
+      "category": "beer",
+      "name": "Bolla Operating Corp.",
+      "address": "579 HEMPSTEAD TPKE, WEST HEMPSTEAD, NY, 11552"
+    },
+    {
+      "category": "beer",
+      "name": "Bolla Operating Corp.",
+      "address": "4030 MERRICK RD, SEAFORD, NY, 11783"
+    },
+    {
+      "category": "beer",
+      "name": "Bolla Operating Corp.",
+      "address": "2084 JERICHO TPKE, COMMACK, NY, 11725"
+    },
+    {
+      "category": "beer",
+      "name": "Bolla Operating Corp.",
+      "address": "1589 MERRICK RD W, MERRICK, NY, 11566"
+    },
+    {
+      "category": "beer",
+      "name": "Bolla Operating Corp.",
+      "address": "1214 GRAND AVE, BALDWIN, NY, 11510"
+    },
+    {
+      "category": "beer",
+      "name": "Bolla Operating Corp.",
+      "address": "3285 HEMPSTEAD TPKE, LEVITTOWN, NY, 11756"
+    },
+    {
+      "category": "beer",
+      "name": "Hillside Convenience & Smoke Inc",
+      "address": "1594 Hillside Ave, New Hyde Park, NY, 11040"
+    },
+    {
+      "category": "beer",
+      "name": "Cvs Albany Llc",
+      "address": "143 RTE 303, VALLEY COTTAGE, NY, 10989"
+    },
+    {
+      "category": "cannabis",
+      "name": "Copperhead Grow, LLC",
+      "address": "10242 State Route 12, Remsen, NY, 13438"
+    },
+    {
+      "category": "cannabis",
+      "name": "Empire Plant Services Holdings LLC",
+      "address": "900 Broadhollow Road, Farmingdale, NY, 11735"
+    },
+    {
+      "category": "cannabis",
+      "name": "Forage Dispensaries, LLC",
+      "address": "734 NY-32A, Palenville, NY, 12414"
+    }
+  ],
   "sources": [
     {
       "category": "Liquor stores",
@@ -15,7 +266,7 @@
       "agency": "New York State Liquor Authority",
       "endpoint": "https://data.ny.gov/d/9s3h-dpkz",
       "filter": "description IN ('Liquor Store','Wine Store') AND county in 5 NYC boroughs",
-      "geocoding": "Built-in georeference field"
+      "geocoding": "Built-in georeference field; records stacked on a shared point re-geocoded with GeoSearch"
     },
     {
       "category": "Beer (groceries / delis / drug stores)",
@@ -23,29 +274,23 @@
       "agency": "New York State Liquor Authority",
       "endpoint": "https://data.ny.gov/d/9s3h-dpkz",
       "filter": "description IN ('Grocery Store','Drug Store') AND county in 5 NYC boroughs",
-      "geocoding": "Built-in georeference field"
+      "geocoding": "Built-in georeference field; records stacked on a shared point re-geocoded with GeoSearch"
     },
     {
       "category": "Legal cannabis dispensaries",
       "name": "Current OCM Licenses",
       "agency": "New York State Office of Cannabis Management",
       "endpoint": "https://data.ny.gov/d/jskf-tt3q",
-      "filter": "license_type in adult-use retail/microbusiness/RO dispensary types AND license_status='Active' AND county in 5 NYC boroughs",
-      "geocoding": "NYC DCP GeoSearch (https://geosearch.planninglabs.nyc)"
+      "filter": "license_type in adult-use retail/microbusiness/RO dispensary types AND license_status='Active' AND county in 5 NYC boroughs; operational_status='Active' marks a dispensary open to the public",
+      "geocoding": "NYC DCP GeoSearch, accepted only when house number and ZIP match"
     },
     {
       "category": "Tobacco / e-cigarette retailers",
-      "name": "Legally Operating Businesses",
+      "name": "Issued Licenses",
       "agency": "NYC Department of Consumer and Worker Protection",
       "endpoint": "https://data.cityofnewyork.us/d/w7w3-xahh",
-      "filter": "business_category IN ('Tobacco Retail Dealer','Electronic Cigarette Dealer') AND license_status in ('Active','Ready for Renewal')",
+      "filter": "business_category IN ('Tobacco Retail Dealer','Electronic Cigarette Dealer') AND license_status in ('Active','Ready for Renewal'); licenses held by one business at one address merged",
       "geocoding": "Built-in latitude/longitude fields"
     }
-  ],
-  "limitations": [
-    "A current license is not the same as a currently operating business. Some licensees close, move or sell without notifying the regulator.",
-    "Illegal/unlicensed cannabis or smoke shops are not in any of these datasets.",
-    "Licensees can hold multiple license types at one address (e.g., a bodega may appear as both a liquor seller and a tobacco dealer at the same address).",
-    "OCM addresses are geocoded via NYC DCP GeoSearch. A small share of records fail to geocode; those are excluded from the map but kept in the CSV."
   ]
 }
