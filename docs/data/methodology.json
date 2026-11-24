@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-24T13:57:23+00:00",
+  "generated_at": "2026-11-24T14:03:58+00:00",
   "counts": {
     "liquor": 1489,
     "beer": 6735,
@@ -10,8 +10,8 @@
   },
   "mapped_features": 12399,
   "geocoding": {
-    "needed": 460,
-    "placed": 420,
+    "needed": 466,
+    "placed": 421,
     "stacked": 304,
     "replaced": 254
   },

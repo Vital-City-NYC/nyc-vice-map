@@ -744,6 +744,14 @@
 "lon": -73.851152,
 "postalcode": "10462"
 },
+"1266 GRAND CONCOURSE, BRONX, NY 10456": {
+"borough": "Bronx",
+"housenumber": "1266",
+"label": "1266 GRAND CONCOURSE, Bronx, NY, USA",
+"lat": 40.835904,
+"lon": -73.915859,
+"postalcode": "10456"
+},
 "127 E 56TH ST, NEW YORK, NY 10022": {
 "borough": "Manhattan",
 "housenumber": "127",
@@ -1047,6 +1055,14 @@
 "lat": 40.669015,
 "lon": -73.751902,
 "postalcode": "11413"
+},
+"143 RTE 303, VALLEY COTTAGE, NY 10989": {
+"borough": "Manhattan",
+"housenumber": "303",
+"label": "303 WEST 143 STREET, New York, NY, USA",
+"lat": 40.821762,
+"lon": -73.943056,
+"postalcode": "10030"
 },
 "14310 LIBERTY AVE, JAMAICA, NY 11435": {
 "borough": "Queens",
@@ -1376,6 +1392,7 @@
 "lon": -73.948027,
 "postalcode": "10028"
 },
+"1589 MERRICK RD W, MERRICK, NY 11566": null,
 "159 AVENUE C, NEW YORK, NY 10009": {
 "borough": "Manhattan",
 "housenumber": "159",
@@ -1879,6 +1896,14 @@
 "lat": 40.810917,
 "lon": -73.928967,
 "postalcode": "10451"
+},
+"2084 JERICHO TPKE, COMMACK, NY 11725": {
+"borough": "Queens",
+"housenumber": "23901",
+"label": "23901 JERICHO TURNPIKE, Bellerose, NY, USA",
+"lat": 40.723334,
+"lon": -73.728064,
+"postalcode": "11426"
 },
 "20917 NORTHERN BLVD, BAYSIDE, NY 11361": {
 "borough": "Queens",
@@ -3152,6 +3177,14 @@
 "lon": -73.882876,
 "postalcode": "11370"
 },
+"3285 HEMPSTEAD TPKE, LEVITTOWN, NY 11756": {
+"borough": "Queens",
+"housenumber": "13230",
+"label": "13230 NORTH HEMPSTEAD TURNPIKE, Flushing, NY, USA",
+"lat": 40.74777,
+"lon": -73.83188,
+"postalcode": "11355"
+},
 "329-339 WYCKOFF AVE, RIDGEWOOD, NY 11385": {
 "borough": "Queens",
 "housenumber": "339",
@@ -3599,6 +3632,14 @@
 "lat": 40.744189,
 "lon": -73.923896,
 "postalcode": "11104"
+},
+"4030 MERRICK RD, SEAFORD, NY 11783": {
+"borough": "Bronx",
+"housenumber": "4030",
+"label": "4030 BOSTON ROAD, Bronx, NY, USA",
+"lat": 40.884574,
+"lon": -73.830853,
+"postalcode": "10475"
 },
 "4034 HYLAN BLVD, STATEN ISLAND, NY 10308": {
 "borough": "Staten Island",

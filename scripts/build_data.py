@@ -479,6 +479,12 @@ def geocode_row(r, cache):
 def geocode_rows(rows):
     cache = load_geocache()
 
+    # Coordinates outside the region (DCWP publishes some as 0, 0) count as missing.
+    for r in rows:
+        if r["lat"] is not None and not (40.4 < r["lat"] < 41.0 and -74.3 < r["lon"] < -73.6):
+            r["lat"] = r["lon"] = None
+            r["geocode"] = ""
+
     # 1. Records with no coordinates (all OCM cannabis licenses).
     needed = [r for r in rows if r["lat"] is None or r["lon"] is None]
 
@@ -519,13 +525,18 @@ def geocode_rows(rows):
 
 def apply_city_limits(rows):
     """Keep a record if its ZIP is wholly inside the city or its point is inside a
-    borough. Fill in a missing borough the same way."""
+    borough. The borough comes from the same test: the liquor authority's county
+    field is wrong for a few dozen records (a Brooklyn deli filed under Manhattan),
+    while the ZIP code and the point nearly always agree."""
     kept, dropped = [], []
     for r in rows:
         zb = zip_borough(r["zip"])
         pb = point_borough(r["lat"], r["lon"]) if r["lat"] is not None and not zb else ""
         if zb or pb:
-            if not r["borough"]:
+            label = r["borough"]
+            if zb and label and zb != label and r["lat"] is not None and point_borough(r["lat"], r["lon"]) == label:
+                pass  # a mistyped ZIP; the label and the point agree
+            else:
                 r["borough"] = zb or pb
             kept.append(r)
         else:
