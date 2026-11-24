@@ -3,16 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>New York City vice map — liquor, cannabis, tobacco</title>
-<meta name="description" content="An interactive map of every licensed liquor store, legal cannabis dispensary, and tobacco/e-cigarette retailer in New York City.">
+<title>New York City vice map: liquor, cannabis, tobacco</title>
+<meta name="description" content="A map of every licensed liquor store, legal cannabis dispensary, tobacco and e-cigarette retailer and beer-selling grocery in New York City, rebuilt weekly from the regulators' license rolls.">
+<meta property="og:title" content="New York City vice map">
+<meta property="og:description" content="Every licensed liquor store, legal cannabis dispensary and tobacco or vape seller in New York City, on one map.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@5.5.4/dist/css/tabulator_simple.min.css" />
 <link rel="stylesheet" href="assets/styles.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://unpkg.com/tabulator-tables@5.5.4/dist/js/tabulator.min.js"></script>
 </head>
 <body>
@@ -20,40 +18,49 @@
 <header class="topbar">
   <div class="title-block">
     <h1>New York City vice map</h1>
-    <p class="dek">Every licensed liquor store, legal cannabis dispensary, tobacco or e-cigarette retailer and beer-selling grocery, deli and drug store in the five boroughs.</p>
+    <p class="dek" id="lede">Every licensed liquor store, legal cannabis dispensary, tobacco or e-cigarette retailer and beer-selling grocery, deli and drug store in the five boroughs.</p>
   </div>
-  <a class="methodology-link" href="methodology.html">Methodology &amp; sources</a>
+  <a class="methodology-link" href="methodology.html">Methodology and sources</a>
 </header>
 
-<section id="controls">
+<section id="controls" aria-label="Map filters">
   <div class="control-row">
     <label class="cat-toggle cat-liquor">
       <input type="checkbox" data-cat="liquor" checked>
       <span class="dot"></span>
-      Liquor stores <span class="count" data-count="liquor">—</span>
+      Liquor and wine stores <span class="count" data-count="liquor"></span>
     </label>
     <label class="cat-toggle cat-cannabis">
       <input type="checkbox" data-cat="cannabis" checked>
       <span class="dot"></span>
-      Legal cannabis <span class="count" data-count="cannabis">—</span>
+      Legal cannabis <span class="count" data-count="cannabis"></span>
     </label>
     <label class="cat-toggle cat-tobacco">
       <input type="checkbox" data-cat="tobacco" checked>
       <span class="dot"></span>
-      Tobacco / vape <span class="count" data-count="tobacco">—</span>
+      Tobacco and vape <span class="count" data-count="tobacco"></span>
     </label>
     <label class="cat-toggle cat-beer">
       <input type="checkbox" data-cat="beer">
       <span class="dot"></span>
-      Beer (groceries / delis) <span class="count" data-count="beer">—</span>
+      Beer at groceries and delis <span class="count" data-count="beer"></span>
     </label>
   </div>
   <div class="control-row">
-    <div class="view-toggle" role="tablist" aria-label="Map view">
-      <button type="button" class="view-btn active" data-view="markers">Markers</button>
-      <button type="button" class="view-btn" data-view="heat">Density</button>
+    <div class="search-wrap">
+      <input type="search" id="search" placeholder="Search an address, like 350 5th Ave" autocomplete="off"
+             role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions" aria-label="Search a New York City address">
+      <div id="suggestions" class="suggestions" role="listbox" hidden></div>
     </div>
-    <select id="borough-filter">
+    <label class="inline-label">Within
+      <select id="radius-select">
+        <option value="0.1">0.1 mile</option>
+        <option value="0.25" selected>0.25 mile</option>
+        <option value="0.5">0.5 mile</option>
+        <option value="1">1 mile</option>
+      </select>
+    </label>
+    <select id="borough-filter" aria-label="Borough">
       <option value="">All boroughs</option>
       <option>Manhattan</option>
       <option>Brooklyn</option>
@@ -61,23 +68,14 @@
       <option>Bronx</option>
       <option>Staten Island</option>
     </select>
-    <div class="search-wrap">
-      <input type="search" id="search" placeholder="Type any NYC address — see vice stores nearby" autocomplete="off">
-      <div id="suggestions" class="suggestions" hidden></div>
-    </div>
-    <select id="radius-select" title="Radius around the searched address">
-      <option value="0.1">0.1 mi</option>
-      <option value="0.25" selected>0.25 mi</option>
-      <option value="0.5">0.5 mi</option>
-      <option value="1">1 mi</option>
-    </select>
     <button id="reset-btn" type="button">Reset</button>
-    <span id="visible-count" class="visible-count">—</span>
+    <span id="visible-count" class="visible-count"></span>
   </div>
+  <p class="cannabis-note" id="cannabis-note"></p>
 </section>
 
 <div id="map">
-  <aside id="nearby-panel" class="nearby-panel" hidden>
+  <aside id="nearby-panel" class="nearby-panel" hidden aria-live="polite">
     <header>
       <h3 id="nearby-title">Nearby</h3>
       <button id="nearby-close" type="button" aria-label="Clear address">×</button>
@@ -88,13 +86,17 @@
 </div>
 
 <section id="table-section">
-  <h2>All locations</h2>
+  <div class="table-head">
+    <h2>All locations</h2>
+    <p class="downloads">Download <a href="data/locations.csv" download>CSV</a> or <a href="data/locations.geojson" download>GeoJSON</a></p>
+  </div>
+  <p class="table-hint">The table follows the filters above. Click a row to find it on the map.</p>
   <div id="table"></div>
 </section>
 
 <footer class="site-footer">
   <p>
-    Data refreshed weekly from the New York State Liquor Authority, the New York State Office of Cannabis Management and the New York City Department of Consumer and Worker Protection. A current license does not guarantee a business is currently open. See the <a href="methodology.html">methodology</a> for filters and limitations.
+    Data refreshed weekly from the New York State Liquor Authority, the New York State Office of Cannabis Management and the New York City Department of Consumer and Worker Protection. A current license does not guarantee a business is open, and unlicensed smoke shops appear in none of these records. See the <a href="methodology.html">methodology</a> for filters and limitations.
   </p>
   <p class="meta" id="meta-line">Loading…</p>
 </footer>

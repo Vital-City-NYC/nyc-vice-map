@@ -2,90 +2,75 @@
 (function () {
   'use strict';
 
-  const CAT_COLOR = {
-    liquor:   '#b8312f',
-    cannabis: '#2e7d4f',
-    tobacco:  '#c97a1f',
-    beer:     '#b8860b',
-  };
+  const CATS = ['beer', 'tobacco', 'liquor', 'cannabis']; // bottom to top
+  const css = getComputedStyle(document.documentElement);
+  const CAT_COLOR = {};
+  CATS.forEach((c) => { CAT_COLOR[c] = css.getPropertyValue(`--${c}`).trim(); });
   const CAT_LABEL = {
-    liquor:   'Liquor store',
+    liquor:   'Liquor or wine store',
     cannabis: 'Cannabis dispensary',
     tobacco:  'Tobacco / vape',
-    beer:     'Beer (grocery / deli)',
+    beer:     'Beer (grocery, deli, drug store)',
   };
-  const CATS = ['liquor', 'cannabis', 'tobacco', 'beer'];
+  const CAT_PLURAL = {
+    liquor:   'liquor and wine stores',
+    cannabis: 'cannabis dispensaries',
+    tobacco:  'tobacco and vape sellers',
+    beer:     'beer-licensed groceries and delis',
+  };
+  const SOURCE = {
+    liquor:   ['NYS Liquor Authority', 'https://data.ny.gov/d/9s3h-dpkz'],
+    beer:     ['NYS Liquor Authority', 'https://data.ny.gov/d/9s3h-dpkz'],
+    cannabis: ['NYS Office of Cannabis Management', 'https://data.ny.gov/d/jskf-tt3q'],
+    tobacco:  ['NYC Department of Consumer and Worker Protection', 'https://data.cityofnewyork.us/d/w7w3-xahh'],
+  };
+  const HOME = { center: [40.705, -73.95], zoom: 11 };
 
-  const map = L.map('map', { preferCanvas: true }).setView([40.72, -73.96], 11);
+  const map = L.map('map', { preferCanvas: true, zoomSnap: 0.5 }).setView(HOME.center, HOME.zoom);
 
-  // CARTO Positron — clean basemap, free tier OK
+  // The page scrolls past the map to a table, so the wheel only zooms once the
+  // reader has clicked into the map.
+  map.scrollWheelZoom.disable();
+  map.on('click focus', () => map.scrollWheelZoom.enable());
+  map.getContainer().addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2r82_1_ae4e70b6166057bc41b89638', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 19,
   }).addTo(map);
 
-  // Heat layers per category — built lazily, color-tinted via gradient
-  const heatLayers = {};
-  const heatGradients = {
-    liquor:   { 0.2: '#fff5f4', 0.5: '#e88f8e', 0.8: '#b8312f', 1.0: '#7a1a18' },
-    cannabis: { 0.2: '#eef7f0', 0.5: '#7fc09a', 0.8: '#2e7d4f', 1.0: '#1a4a2e' },
-    tobacco:  { 0.2: '#fdf3e7', 0.5: '#e3b378', 0.8: '#c97a1f', 1.0: '#7a4810' },
-    beer:     { 0.2: '#fbf3dc', 0.5: '#dcbf6a', 0.8: '#b8860b', 1.0: '#705208' },
-  };
-
-  // One cluster group per category so toggles stay snappy
-  const clusters = {};
-  CATS.forEach((cat) => {
-    clusters[cat] = L.markerClusterGroup({
-      chunkedLoading: true,
-      showCoverageOnHover: false,
-      maxClusterRadius: 50,
-      iconCreateFunction: (cluster) => {
-        const c = cluster.getChildCount();
-        return L.divIcon({
-          html: `<div style="background:${CAT_COLOR[cat]};opacity:0.85;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font:600 12px var(--sans, sans-serif);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);">${c}</div>`,
-          className: '',
-          iconSize: [36, 36],
-        });
-      },
-    });
-    map.addLayer(clusters[cat]);
+  // One pane and canvas per category, so the rare layers always draw on top of
+  // the common ones no matter which order they are switched on.
+  const layers = {};
+  const renderers = {};
+  CATS.forEach((cat, i) => {
+    map.createPane(`pane-${cat}`).style.zIndex = 400 + i;
+    renderers[cat] = L.canvas({ pane: `pane-${cat}`, padding: 0.3 });
+    layers[cat] = L.featureGroup().addTo(map);
   });
 
   let allFeatures = [];
+  const DEFAULT_CATS = { liquor: true, cannabis: true, tobacco: true, beer: false };
   const state = {
-    view: 'markers',  // 'markers' | 'heat'
-    cats: { liquor: true, cannabis: true, tobacco: true, beer: false },
+    cats: { ...DEFAULT_CATS },
     borough: '',
     radiusMiles: 0.25,
-    anchor: null,  // { lat, lon, label } if user picked an address
+    anchor: null,  // { lat, lon, label } once the reader picks an address
   };
   let table;
+  let tableReady = false;
 
-  function makeMarker(feature) {
-    const p = feature.properties;
-    const [lon, lat] = feature.geometry.coordinates;
-    const m = L.circleMarker([lat, lon], {
-      radius: 4,
-      color: CAT_COLOR[p.category],
-      fillColor: CAT_COLOR[p.category],
-      fillOpacity: 0.85,
-      weight: 1,
-    });
-    const html = `
-      <div class="pop-name">${escapeHtml(p.name || '(unnamed)')}</div>
-      <div class="pop-cat ${p.category}">${CAT_LABEL[p.category]}</div>
-      <div class="pop-addr">${escapeHtml(p.address || '')}</div>
-      <div class="pop-meta">
-        License ${escapeHtml(p.license_id || '—')} · ${escapeHtml(p.subcategory || '')}<br>
-        Source: <a href="${p.source_url}" target="_blank" rel="noopener">${escapeHtml(p.source)}</a>
-      </div>
-    `;
-    m.bindPopup(html);
-    m._cat = p.category;
-    m._props = p;
-    return m;
+  function dotRadius(z) {
+    if (z < 11.5) return 1.8;
+    if (z < 12.5) return 2.4;
+    if (z < 13.5) return 3.2;
+    if (z < 14.5) return 4.2;
+    if (z < 16) return 5.5;
+    return 7;
+  }
+
+  function isHollow(p) {
+    return p.category === 'cannabis' && !p.open;
   }
 
   function escapeHtml(s) {
@@ -94,76 +79,80 @@
     ));
   }
 
+  function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function statusLine(p) {
+    if (p.category !== 'cannabis') return '';
+    if (p.open) return p.opened ? `Open since ${fmtDate(p.opened)}` : 'Open to the public';
+    return 'Licensed, not open to the public';
+  }
+
+  function popupHtml(p) {
+    const [srcName, srcUrl] = SOURCE[p.category];
+    const status = statusLine(p);
+    const licenses = (p.license_count || 1) > 1
+      ? `${p.license_count} licenses: ${escapeHtml(p.license_id)}`
+      : `License ${escapeHtml(p.license_id || '—')}`;
+    return `
+      <div class="pop-name">${escapeHtml(p.name || '(unnamed)')}</div>
+      <div class="pop-cat"><span class="pop-dot ${isHollow(p) ? 'hollow' : ''}" style="--c:${CAT_COLOR[p.category]}"></span>${escapeHtml(p.subcategory || CAT_LABEL[p.category])}</div>
+      ${status ? `<div class="pop-status">${status}</div>` : ''}
+      <div class="pop-addr">${escapeHtml(p.address || '')}</div>
+      <div class="pop-meta">
+        ${licenses}${p.expiration_date ? ` · expires ${fmtDate(p.expiration_date)}` : ''}<br>
+        Source: <a href="${srcUrl}" target="_blank" rel="noopener">${escapeHtml(srcName)}</a>
+      </div>
+    `;
+  }
+
+  function makeMarker(feature) {
+    const p = feature.properties;
+    const [lon, lat] = feature.geometry.coordinates;
+    const hollow = isHollow(p);
+    const m = L.circleMarker([lat, lon], {
+      renderer: renderers[p.category],
+      radius: dotRadius(map.getZoom()) + (hollow ? 0.6 : 0),
+      color: CAT_COLOR[p.category],
+      fillColor: CAT_COLOR[p.category],
+      fillOpacity: hollow ? 0 : 0.8,
+      opacity: hollow ? 1 : 0.9,
+      weight: hollow ? 1.4 : 0.6,
+    });
+    m.bindPopup(() => popupHtml(p), { maxWidth: 280 });
+    return m;
+  }
+
   function passesFilters(p) {
     if (!state.cats[p.category]) return false;
     if (state.borough && p.borough !== state.borough) return false;
     return true;
   }
 
-  function clearHeatLayers() {
-    Object.values(heatLayers).forEach((layer) => {
-      if (layer && map.hasLayer(layer)) map.removeLayer(layer);
-    });
-  }
-
   function applyFilters() {
-    const buckets = { liquor: [], cannabis: [], tobacco: [], beer: [] };
-    const heatPoints = { liquor: [], cannabis: [], tobacco: [], beer: [] };
     let visible = 0;
+    CATS.forEach((cat) => layers[cat].clearLayers());
     for (const f of allFeatures) {
       if (!passesFilters(f.properties)) continue;
-      buckets[f.properties.category].push(f._marker);
-      const [lon, lat] = f.geometry.coordinates;
-      heatPoints[f.properties.category].push([lat, lon, 1]);
+      layers[f.properties.category].addLayer(f._marker);
       visible++;
     }
-
-    if (state.view === 'markers') {
-      clearHeatLayers();
-      Object.values(clusters).forEach((g) => {
-        g.clearLayers();
-        if (!map.hasLayer(g)) map.addLayer(g);
-      });
-      Object.entries(buckets).forEach(([cat, arr]) => {
-        if (arr.length) clusters[cat].addLayers(arr);
-      });
-    } else {
-      // heat view
-      Object.values(clusters).forEach((g) => {
-        g.clearLayers();
-        if (map.hasLayer(g)) map.removeLayer(g);
-      });
-      clearHeatLayers();
-      Object.entries(heatPoints).forEach(([cat, pts]) => {
-        if (!pts.length) return;
-        heatLayers[cat] = L.heatLayer(pts, {
-          radius: 22,
-          blur: 18,
-          maxZoom: 16,
-          minOpacity: 0.35,
-          gradient: heatGradients[cat],
-        });
-        heatLayers[cat].addTo(map);
-      });
-    }
-
-    document.getElementById('visible-count').textContent =
-      `${visible.toLocaleString()} visible`;
-    if (table) {
-      table.setFilter((row) => passesFilters(row));
-    }
-    if (state.anchor) renderNearby();
+    document.getElementById('visible-count').textContent = `${visible.toLocaleString()} on the map`;
+    if (table && tableReady) table.setFilter(passesFilters);
+    if (state.anchor) renderNearby(false);
   }
 
+  map.on('zoomend', () => {
+    const r = dotRadius(map.getZoom());
+    for (const f of allFeatures) {
+      f._marker.setRadius(r + (isHollow(f.properties) ? 0.6 : 0));
+    }
+  });
+
   function bindControls() {
-    document.querySelectorAll('.view-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.view = btn.dataset.view;
-        applyFilters();
-      });
-    });
     document.querySelectorAll('.cat-toggle input').forEach((el) => {
       el.addEventListener('change', () => {
         state.cats[el.dataset.cat] = el.checked;
@@ -173,25 +162,28 @@
     document.getElementById('borough-filter').addEventListener('change', (e) => {
       state.borough = e.target.value;
       applyFilters();
+      if (state.borough && !state.anchor) {
+        const pts = allFeatures.filter((f) => f.properties.borough === state.borough).map((f) => f._marker.getLatLng());
+        if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [20, 20] });
+      }
     });
     setupAddressSearch();
 
     document.getElementById('radius-select').addEventListener('change', (e) => {
       state.radiusMiles = parseFloat(e.target.value);
-      if (state.anchor) renderNearby();
+      if (state.anchor) renderNearby(true);
     });
 
     document.getElementById('reset-btn').addEventListener('click', () => {
-      state.view = 'markers';
-      state.cats = { liquor: true, cannabis: true, tobacco: true, beer: false };
+      state.cats = { ...DEFAULT_CATS };
       state.borough = '';
-      document.querySelectorAll('.view-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === 'markers'));
       document.querySelectorAll('.cat-toggle input').forEach((el) => (el.checked = state.cats[el.dataset.cat]));
       document.getElementById('borough-filter').value = '';
       document.getElementById('search').value = '';
       clearAnchor();
       applyFilters();
-      map.setView([40.72, -73.96], 11);
+      map.closePopup();
+      map.setView(HOME.center, HOME.zoom);
     });
     document.getElementById('nearby-close').addEventListener('click', () => {
       document.getElementById('search').value = '';
@@ -211,34 +203,27 @@
   }
 
   function haversineMiles(a, b) {
-    const R = 3958.7613; // earth radius in miles
+    const R = 3958.7613;
     const toRad = (d) => (d * Math.PI) / 180;
     const dLat = toRad(b[0] - a[0]);
     const dLon = toRad(b[1] - a[1]);
-    const lat1 = toRad(a[0]);
-    const lat2 = toRad(b[0]);
-    const h = Math.sin(dLat/2)**2 + Math.sin(dLon/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+    const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(toRad(a[0])) * Math.cos(toRad(b[0]));
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
   function setAnchor(lat, lon, label) {
     if (anchorMarker) map.removeLayer(anchorMarker);
-    if (anchorCircle) map.removeLayer(anchorCircle);
     anchorMarker = L.marker([lat, lon], {
-      icon: L.divIcon({
-        className: '',
-        html: '<div style="width:18px;height:18px;border-radius:50%;background:#1a1a1a;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,0.4);"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      }),
+      icon: L.divIcon({ className: 'anchor-pin', iconSize: [16, 16], iconAnchor: [8, 8] }),
       keyboard: false,
       interactive: false,
+      zIndexOffset: 1000,
     }).addTo(map);
     state.anchor = { lat, lon, label };
-    renderNearby();
+    renderNearby(true);
   }
 
-  function renderNearby() {
+  function renderNearby(refit) {
     if (!state.anchor) return;
     const { lat, lon, label } = state.anchor;
     const radius = state.radiusMiles;
@@ -247,11 +232,13 @@
       radius: radius * 1609.34,
       color: '#1a1a1a',
       weight: 1,
-      opacity: 0.5,
-      fillColor: '#1a1a1a',
-      fillOpacity: 0.04,
+      opacity: 0.6,
+      dashArray: '3 4',
+      fill: false,
+      interactive: false,
     }).addTo(map);
 
+    // The nearby count ignores the borough filter: a radius can cross a border.
     const within = [];
     const counts = { liquor: 0, cannabis: 0, tobacco: 0, beer: 0 };
     for (const f of allFeatures) {
@@ -265,50 +252,52 @@
     }
     within.sort((a, b) => a.d - b.d);
 
-    const panel = document.getElementById('nearby-panel');
     document.getElementById('nearby-title').textContent = label;
-    const summary = document.getElementById('nearby-summary');
-    summary.innerHTML = [
-      `<div>${within.length} location${within.length === 1 ? '' : 's'} within ${radius} mi</div>`,
-      ...CATS.filter((c) => state.cats[c]).map((c) =>
-        `<span class="ns-cat"><span class="ns-dot" style="background:${CAT_COLOR[c]}"></span>${counts[c]} ${CAT_LABEL[c].toLowerCase()}</span>`
+    const radiusLabel = radius === 1 ? '1 mile' : `${radius} mile`;
+    const shown = CATS.slice().reverse().filter((c) => state.cats[c]);
+    document.getElementById('nearby-summary').innerHTML = [
+      `<div class="ns-total">${within.length.toLocaleString()} within ${radiusLabel}</div>`,
+      ...shown.map((c) =>
+        `<span class="ns-cat"><span class="ns-dot" style="background:${CAT_COLOR[c]}"></span>${counts[c]} ${counts[c] === 1 ? CAT_LABEL[c].toLowerCase() : CAT_PLURAL[c]}</span>`
       ),
     ].join('');
 
     const list = document.getElementById('nearby-list');
-    list.innerHTML = within.slice(0, 50).map(({ f, d }, idx) => {
+    const LIMIT = 75;
+    list.innerHTML = within.slice(0, LIMIT).map(({ f, d }, idx) => {
       const p = f.properties;
-      const ft = (d * 5280).toFixed(0);
-      const distLabel = d < 0.1 ? `${ft} ft` : `${d.toFixed(2)} mi`;
+      const distLabel = d < 0.1 ? `${Math.round(d * 5280 / 10) * 10} ft` : `${d.toFixed(2)} mi`;
+      const extra = isHollow(p) ? ' · not open' : '';
       return `
-        <li data-idx="${idx}">
-          <span class="nl-dot" style="background:${CAT_COLOR[p.category]}"></span>
+        <li data-idx="${idx}" tabindex="0">
+          <span class="nl-dot ${isHollow(p) ? 'hollow' : ''}" style="--c:${CAT_COLOR[p.category]}"></span>
           <span class="nl-text">
-            <div class="nl-name">${escapeHtml(p.name || '(unnamed)')}</div>
-            <div class="nl-meta">${escapeHtml(p.address || '')}</div>
+            <span class="nl-name">${escapeHtml(p.name || '(unnamed)')}</span>
+            <span class="nl-meta">${escapeHtml((p.address || '').split(',')[0])}${extra}</span>
           </span>
           <span class="nl-dist">${distLabel}</span>
         </li>
       `;
-    }).join('');
+    }).join('') + (within.length > LIMIT ? `<li class="nl-more">Closest ${LIMIT} shown</li>` : '');
 
-    list.onclick = (e) => {
-      const li = e.target.closest('li');
-      if (!li) return;
+    const go = (li) => {
       const item = within[parseInt(li.dataset.idx, 10)];
       if (!item) return;
       const [flon, flat] = item.f.geometry.coordinates;
-      if (state.view === 'heat') {
-        document.querySelector('.view-btn[data-view="markers"]').click();
-      }
       map.setView([flat, flon], 18);
-      if (item.f._marker) setTimeout(() => item.f._marker.openPopup(), 250);
+      if (!layers[item.f.properties.category].hasLayer(item.f._marker)) layers[item.f.properties.category].addLayer(item.f._marker);
+      setTimeout(() => item.f._marker.openPopup(), 250);
     };
+    list.onclick = (e) => { const li = e.target.closest('li[data-idx]'); if (li) go(li); };
+    list.onkeydown = (e) => { if (e.key === 'Enter') { const li = e.target.closest('li[data-idx]'); if (li) go(li); } };
 
-    panel.hidden = false;
-
-    // Frame the radius circle
-    map.fitBounds(anchorCircle.getBounds(), { padding: [40, 40] });
+    document.getElementById('nearby-panel').hidden = false;
+    if (refit) {
+      const wide = map.getSize().x > 700;
+      map.fitBounds(anchorCircle.getBounds(), wide
+        ? { paddingTopLeft: [30, 30], paddingBottomRight: [340, 30] }
+        : { paddingTopLeft: [20, 20], paddingBottomRight: [20, map.getSize().y * 0.5] });
+    }
   }
 
   function setupAddressSearch() {
@@ -319,36 +308,38 @@
     let t;
     let lastFetchSeq = 0;
 
+    function hide() {
+      sugEl.hidden = true;
+      searchEl.setAttribute('aria-expanded', 'false');
+    }
+
     async function fetchAddressSuggestions(q) {
       const seq = ++lastFetchSeq;
       const url = 'https://geosearch.planninglabs.nyc/v2/autocomplete?size=8&text=' + encodeURIComponent(q);
       try {
         const r = await fetch(url);
         const data = await r.json();
-        if (seq !== lastFetchSeq) return;  // stale
+        if (seq !== lastFetchSeq) return;
         const feats = (data.features || []).filter((f) => f.geometry && f.geometry.type === 'Point');
         currentSuggestions = feats;
         activeIdx = -1;
         if (!feats.length) {
-          sugEl.hidden = true;
-          sugEl.innerHTML = '';
+          sugEl.innerHTML = '<div class="suggestion empty">No New York City address matches</div>';
+          sugEl.hidden = false;
           return;
         }
         sugEl.innerHTML = feats.map((f, i) => {
           const p = f.properties || {};
-          const label = p.label || p.name || '';
-          const sub = [p.borough, p.region, p.postalcode].filter(Boolean).join(' · ');
+          const sub = [p.borough, p.postalcode].filter(Boolean).join(' · ');
           return `
-            <div class="suggestion" data-idx="${i}">
-              <span class="s-dot" style="background:#1a1a1a"></span>
-              <span class="s-text">
-                <div class="s-name">${escapeHtml(label)}</div>
-                <div class="s-addr">${escapeHtml(sub)}</div>
-              </span>
+            <div class="suggestion" role="option" id="sug-${i}" data-idx="${i}">
+              <span class="s-name">${escapeHtml(p.name || p.label || '')}</span>
+              <span class="s-addr">${escapeHtml(sub)}</span>
             </div>
           `;
         }).join('');
         sugEl.hidden = false;
+        searchEl.setAttribute('aria-expanded', 'true');
       } catch (e) {
         console.error('autocomplete error', e);
       }
@@ -358,59 +349,53 @@
       const f = currentSuggestions[idx];
       if (!f) return;
       const [lon, lat] = f.geometry.coordinates;
-      const label = (f.properties && (f.properties.label || f.properties.name)) || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      const p = f.properties || {};
+      const label = p.name ? `${p.name}${p.borough ? ', ' + p.borough : ''}` : (p.label || `${lat.toFixed(5)}, ${lon.toFixed(5)}`);
       searchEl.value = label;
-      sugEl.hidden = true;
-      if (state.view === 'heat') {
-        document.querySelector('.view-btn[data-view="markers"]').click();
-      }
+      hide();
       setAnchor(lat, lon, label);
     }
 
     searchEl.addEventListener('input', (e) => {
       clearTimeout(t);
       const v = e.target.value.trim();
-      if (v.length < 3) {
-        sugEl.hidden = true;
-        return;
-      }
+      if (v.length < 3) { hide(); return; }
       t = setTimeout(() => fetchAddressSuggestions(v), 180);
     });
 
     searchEl.addEventListener('keydown', (e) => {
       if (sugEl.hidden) return;
-      const items = sugEl.querySelectorAll('.suggestion');
+      const items = sugEl.querySelectorAll('.suggestion[data-idx]');
+      const mark = () => {
+        items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        if (activeIdx >= 0) searchEl.setAttribute('aria-activedescendant', `sug-${activeIdx}`);
+      };
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         activeIdx = Math.min(activeIdx + 1, items.length - 1);
-        items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        mark();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         activeIdx = Math.max(activeIdx - 1, 0);
-        items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        mark();
       } else if (e.key === 'Enter') {
-        if (activeIdx >= 0) {
+        if (currentSuggestions.length) {
           e.preventDefault();
-          pickSuggestion(activeIdx);
-        } else if (currentSuggestions.length) {
-          e.preventDefault();
-          pickSuggestion(0);
+          pickSuggestion(activeIdx >= 0 ? activeIdx : 0);
         }
       } else if (e.key === 'Escape') {
-        sugEl.hidden = true;
+        hide();
       }
     });
 
     sugEl.addEventListener('mousedown', (e) => {
-      const item = e.target.closest('.suggestion');
+      const item = e.target.closest('.suggestion[data-idx]');
       if (!item) return;
       e.preventDefault();
       pickSuggestion(parseInt(item.dataset.idx, 10));
     });
 
-    searchEl.addEventListener('blur', () => {
-      setTimeout(() => { sugEl.hidden = true; }, 150);
-    });
+    searchEl.addEventListener('blur', () => setTimeout(hide, 150));
   }
 
   function buildTable() {
@@ -425,57 +410,99 @@
       initialSort: [{ column: 'name', dir: 'asc' }],
       columns: [
         {
-          title: 'Category', field: 'category', width: 130, headerFilter: 'list',
+          title: 'Category', field: 'category', width: 120, headerFilter: 'list',
           headerFilterParams: { values: { liquor: 'Liquor', cannabis: 'Cannabis', tobacco: 'Tobacco', beer: 'Beer' }, clearable: true },
-          formatter: (cell) => `<span class="cat-pill ${cell.getValue()}">${cell.getValue()}</span>`,
+          formatter: (cell) => {
+            const p = cell.getRow().getData();
+            return `<span class="cat-pill"><span class="pop-dot ${isHollow(p) ? 'hollow' : ''}" style="--c:${CAT_COLOR[p.category]}"></span>${p.category}</span>`;
+          },
         },
         { title: 'Name', field: 'name', headerFilter: 'input', minWidth: 180 },
         { title: 'Address', field: 'address', headerFilter: 'input', minWidth: 220 },
-        { title: 'Borough', field: 'borough', width: 110, headerFilter: 'list',
-          headerFilterParams: { values: ['', 'Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island'], clearable: true } },
-        { title: 'Type', field: 'subcategory', width: 200, headerFilter: 'input' },
-        { title: 'License #', field: 'license_id', width: 140 },
+        { title: 'Borough', field: 'borough', width: 120, headerFilter: 'list',
+          headerFilterParams: { values: ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island'], clearable: true } },
+        { title: 'License type', field: 'subcategory', width: 210, headerFilter: 'input',
+          formatter: (cell) => {
+            const p = cell.getRow().getData();
+            const s = escapeHtml(cell.getValue() || '');
+            return p.category === 'cannabis' && !p.open ? `${s} <span class="muted">· not open</span>` : s;
+          } },
+        { title: 'License #', field: 'license_id', width: 150 },
       ],
-      rowClick: (e, row) => {
-        const p = row.getData();
-        const f = allFeatures.find((x) => x.properties.id === p.id);
-        if (f && f._marker) {
-          map.setView(f._marker.getLatLng(), 17);
-          f._marker.openPopup();
-          window.scrollTo({ top: document.getElementById('map').offsetTop - 80, behavior: 'smooth' });
-        }
-      },
+    });
+    table.on('tableBuilt', () => {
+      tableReady = true;
+      table.setFilter(passesFilters);
+    });
+    table.on('rowClick', (e, row) => {
+      const p = row.getData();
+      const f = allFeatures.find((x) => x.properties.id === p.id);
+      if (!f) return;
+      const layer = layers[p.category];
+      if (!layer.hasLayer(f._marker)) layer.addLayer(f._marker);
+      document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      map.setView(f._marker.getLatLng(), 17);
+      setTimeout(() => f._marker.openPopup(), 300);
     });
   }
 
-  function setCounts() {
-    const counts = { liquor: 0, cannabis: 0, tobacco: 0 };
-    allFeatures.forEach((f) => { counts[f.properties.category] = (counts[f.properties.category] || 0) + 1; });
-    Object.entries(counts).forEach(([k, v]) => {
-      const el = document.querySelector(`[data-count="${k}"]`);
-      if (el) el.textContent = `(${v.toLocaleString()})`;
-    });
+  function writeSummary(meta) {
+    // Counts come from the license rolls (methodology.json), mapped or not, so the
+    // legend and the lede agree; the few records that could not be placed are
+    // noted in the footer.
+    const mapped = {};
+    allFeatures.forEach((f) => { mapped[f.properties.category] = (mapped[f.properties.category] || 0) + 1; });
+    const mappedOpen = allFeatures.filter((f) => f.properties.category === 'cannabis' && f.properties.open).length;
+    const tot = (meta && meta.counts) || {};
+    const pick = (k, fallback) => (tot[k] != null ? tot[k] : (fallback || 0));
+    const c = {
+      liquor: pick('liquor', mapped.liquor),
+      tobacco: pick('tobacco', mapped.tobacco),
+      beer: pick('beer', mapped.beer),
+      cannabis: pick('cannabis', mapped.cannabis),
+      cannabisOpen: pick('cannabis_open', mappedOpen),
+    };
+    const cannabisClosed = c.cannabis - c.cannabisOpen;
+    const n = (x) => (x || 0).toLocaleString();
+
+    const set = (k, txt) => { const el = document.querySelector(`[data-count="${k}"]`); if (el) el.textContent = txt; };
+    set('liquor', n(c.liquor));
+    set('tobacco', n(c.tobacco));
+    set('beer', n(c.beer));
+    set('cannabis', `${n(c.cannabisOpen)} open`);
+    const note = document.getElementById('cannabis-note');
+    if (note && cannabisClosed > 0) {
+      note.innerHTML = `<span class="pop-dot hollow" style="--c:${CAT_COLOR.cannabis}"></span>Rings mark ${n(cannabisClosed)} more dispensaries that hold an active license but are not open to the public.`;
+    }
+
+    document.getElementById('lede').textContent =
+      `The city has ${n(c.tobacco)} licensed tobacco and vape sellers, ${n(c.liquor)} liquor and wine stores and ` +
+      `${n(c.cannabisOpen)} legal cannabis dispensaries open to the public. Another ${n(c.beer)} groceries, delis and drug stores ` +
+      `hold licenses to sell beer. Search an address to count what is within walking distance.`;
+
+    if (meta) {
+      const d = new Date(meta.generated_at);
+      const notMapped = (meta.counts && meta.counts.total ? meta.counts.total - meta.mapped_features : 0);
+      document.getElementById('meta-line').textContent =
+        `Last refreshed ${d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. ` +
+        `${meta.mapped_features.toLocaleString()} licensed locations mapped` +
+        (notMapped > 0 ? `; ${notMapped} more could not be placed reliably and are listed in the CSV.` : '.');
+    }
   }
 
   Promise.all([
-    fetch('data/locations.geojson').then((r) => r.json()),
+    fetch('data/locations.geojson').then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
     fetch('data/methodology.json').then((r) => r.json()).catch(() => null),
   ]).then(([geo, meta]) => {
     allFeatures = geo.features;
     allFeatures.forEach((f) => { f._marker = makeMarker(f); });
-    setCounts();
+    writeSummary(meta);
     buildTable();
     bindControls();
     applyFilters();
-
-    if (meta) {
-      const d = new Date(meta.generated_at);
-      const total = (meta.counts && meta.counts.total) || allFeatures.length;
-      document.getElementById('meta-line').textContent =
-        `Last refreshed ${d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}. ${total.toLocaleString()} licensed locations; ${meta.mapped_features.toLocaleString()} mapped.`;
-    }
   }).catch((err) => {
     console.error(err);
     document.getElementById('meta-line').textContent = 'Could not load data.';
+    document.getElementById('lede').textContent = 'The map data did not load. Try reloading the page.';
   });
 })();
