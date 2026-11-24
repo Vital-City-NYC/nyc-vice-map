@@ -6,6 +6,7 @@
   const css = getComputedStyle(document.documentElement);
   const CAT_COLOR = {};
   CATS.forEach((c) => { CAT_COLOR[c] = css.getPropertyValue(`--${c}`).trim(); });
+  const FG = css.getPropertyValue('--fg').trim() || '#f2f3ef';
   const CAT_LABEL = {
     liquor:   'Liquor or wine store',
     cannabis: 'Cannabis dispensary',
@@ -33,7 +34,7 @@
   map.scrollWheelZoom.disable();
   map.on('click focus', () => map.scrollWheelZoom.enable());
   map.getContainer().addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2r82_1_ae4e70b6166057bc41b89638', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_2r82_1_ae4e70b6166057bc41b89638', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 19,
@@ -79,10 +80,15 @@
     ));
   }
 
+  // AP style: Nov. 23, 2026; March, April, May, June and July are spelled out.
+  function apDate(d) {
+    const m = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'][d.getMonth()];
+    return `${m} ${d.getDate()}, ${d.getFullYear()}`;
+  }
+
   function fmtDate(iso) {
     if (!iso) return '';
-    const d = new Date(iso + 'T12:00:00');
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return apDate(new Date(iso + 'T12:00:00'));
   }
 
   function statusLine(p) {
@@ -153,9 +159,11 @@
   });
 
   function bindControls() {
-    document.querySelectorAll('.cat-toggle input').forEach((el) => {
-      el.addEventListener('change', () => {
-        state.cats[el.dataset.cat] = el.checked;
+    document.querySelectorAll('.chip.cat').forEach((el) => {
+      el.addEventListener('click', () => {
+        const on = el.getAttribute('aria-pressed') !== 'true';
+        el.setAttribute('aria-pressed', String(on));
+        state.cats[el.dataset.cat] = on;
         applyFilters();
       });
     });
@@ -177,7 +185,7 @@
     document.getElementById('reset-btn').addEventListener('click', () => {
       state.cats = { ...DEFAULT_CATS };
       state.borough = '';
-      document.querySelectorAll('.cat-toggle input').forEach((el) => (el.checked = state.cats[el.dataset.cat]));
+      document.querySelectorAll('.chip.cat').forEach((el) => el.setAttribute('aria-pressed', String(state.cats[el.dataset.cat])));
       document.getElementById('borough-filter').value = '';
       document.getElementById('search').value = '';
       clearAnchor();
@@ -230,9 +238,9 @@
     if (anchorCircle) map.removeLayer(anchorCircle);
     anchorCircle = L.circle([lat, lon], {
       radius: radius * 1609.34,
-      color: '#1a1a1a',
-      weight: 1,
-      opacity: 0.6,
+      color: FG,
+      weight: 1.2,
+      opacity: 0.8,
       dashArray: '3 4',
       fill: false,
       interactive: false,
@@ -470,21 +478,36 @@
     set('tobacco', n(c.tobacco));
     set('beer', n(c.beer));
     set('cannabis', `${n(c.cannabisOpen)} open`);
-    const note = document.getElementById('cannabis-note');
-    if (note && cannabisClosed > 0) {
-      note.innerHTML = `<span class="pop-dot hollow" style="--c:${CAT_COLOR.cannabis}"></span>Rings mark ${n(cannabisClosed)} more dispensaries that hold an active license but are not open to the public.`;
+    const ring = document.getElementById('ring-note');
+    if (ring && cannabisClosed > 0) {
+      ring.innerHTML = `<span class="pop-dot hollow" style="--c:${CAT_COLOR.cannabis}"></span>Rings are the ${n(cannabisClosed)} dispensaries licensed but not open to the public`;
     }
 
-    document.getElementById('lede').textContent =
-      `The city has ${n(c.tobacco)} licensed tobacco and vape sellers, ${n(c.liquor)} liquor and wine stores and ` +
-      `${n(c.cannabisOpen)} legal cannabis dispensaries open to the public. Another ${n(c.beer)} groceries, delis and drug stores ` +
-      `hold licenses to sell beer. Search an address to count what is within walking distance.`;
+    // "more than 2 to 1", "about 12 to 1"
+    const ratio = (a, b) => {
+      if (!a || !b) return '';
+      const r = a / b;
+      const f = Math.floor(r);
+      return r - f >= 0.1 ? `more than ${f} to 1` : `${f} to 1`;
+    };
+    if (c.tobacco && c.liquor && c.cannabisOpen) {
+      document.getElementById('finding').textContent =
+        `Licensed tobacco and vape sellers outnumber the city's liquor stores ${ratio(c.tobacco, c.liquor)} ` +
+        `and its open legal cannabis dispensaries ${ratio(c.tobacco, c.cannabisOpen)}.`;
+    }
+    document.getElementById('lede').innerHTML =
+      `The map shows <b>${n(c.tobacco)}</b> tobacco and vape sellers, <b>${n(c.liquor)}</b> liquor and wine stores ` +
+      `and <b>${n(c.cannabisOpen)}</b> legal cannabis dispensaries open to the public, plus ${n(cannabisClosed)} more that hold a license but have not opened. ` +
+      `Another <b>${n(c.beer)}</b> groceries, delis and drug stores are licensed to sell beer; switch them on below. ` +
+      `Search an address to count what is within walking distance.`;
 
     if (meta) {
       const d = new Date(meta.generated_at);
+      document.getElementById('asof').textContent =
+        `Licenses as of ${apDate(d)}`;
       const notMapped = (meta.counts && meta.counts.total ? meta.counts.total - meta.mapped_features : 0);
       document.getElementById('meta-line').textContent =
-        `Last refreshed ${d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. ` +
+        `Last refreshed ${apDate(d)}. ` +
         `${meta.mapped_features.toLocaleString()} licensed locations mapped` +
         (notMapped > 0 ? `; ${notMapped} more could not be placed reliably and are listed in the CSV.` : '.');
     }
